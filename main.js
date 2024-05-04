@@ -196,7 +196,7 @@ async function displayVideoInfo(videoInfo) {
 
 // Define function to get video information
 async function getVideoInfo(videoId) {
-  var apiKey = 'AIzaSyAi9TmRbAeBiTxzxtUGoDiyVHOhW63GYNc'; //Please Do not copy this
+  var apiKey = 'AIzaSyAi9TmRbAeBiTxzxtUGoDiyVHOhW63GYNc'; //Please Do not copy this, Yeh key hackers k hath nahi lagna chahie!
   var videoUrl = 'https://www.googleapis.com/youtube/v3/videos?id=' + videoId + '&key=' + apiKey + '&part=snippet,statistics,contentDetails';
 
   try {
