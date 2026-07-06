@@ -92,37 +92,71 @@ async function takeScreenshot() {
 }
 
 
+// Build a CORS-friendly fallback URL using the images.weserv.nl image proxy.
+// This is only used if loading the image directly fails, so the app keeps
+// working even if a host ever stops sending CORS headers.
+function buildCorsFallbackUrl(imageUrl) {
+  // weserv expects the target URL without its protocol prefix.
+  var stripped = imageUrl.replace(/^https?:\/\//, '');
+  return 'https://images.weserv.nl/?url=' + encodeURIComponent(stripped);
+}
+
 function convertImageUrlToDataUrl(imageUrl, callback) {
-  // Create a new Image object
-  var img = new Image();
+  // Try loading the image directly first (YouTube's own CDNs send CORS
+  // headers), and only fall back to a proxy if that attempt fails.
+  function loadImage(sourceUrl, isFallback) {
+      // Create a new Image object
+      var img = new Image();
 
-  // Set the crossOrigin property to 'Anonymous' to avoid CORS issues
-  img.crossOrigin = 'Anonymous';
+      // Set the crossOrigin property to 'Anonymous' to avoid CORS issues
+      img.crossOrigin = 'Anonymous';
 
-  // Set the onload callback function
-  img.onload = function() {
-      // Create a canvas element
-      var canvas = document.createElement('canvas');
+      // Set the onload callback function
+      img.onload = function() {
+          // Create a canvas element
+          var canvas = document.createElement('canvas');
 
-      // Set the canvas dimensions to match the image
-      canvas.width = img.width;
-      canvas.height = img.height;
+          // Set the canvas dimensions to match the image
+          canvas.width = img.width;
+          canvas.height = img.height;
 
-      // Get the drawing context
-      var ctx = canvas.getContext('2d');
+          // Get the drawing context
+          var ctx = canvas.getContext('2d');
 
-      // Draw the image onto the canvas
-      ctx.drawImage(img, 0, 0);
+          // Draw the image onto the canvas
+          ctx.drawImage(img, 0, 0);
 
-      // Get the data URL of the canvas
-      var dataUrl = canvas.toDataURL('image/png'); // Change 'image/png' to match the image format
+          try {
+              // Get the data URL of the canvas
+              var dataUrl = canvas.toDataURL('image/png'); // Change 'image/png' to match the image format
 
-      // Call the callback function with the data URL
-      callback(dataUrl);
-  };
+              // Call the callback function with the data URL
+              callback(dataUrl);
+          } catch (e) {
+              // The canvas got tainted (image loaded without CORS headers).
+              // Retry through the CORS proxy if we have not already.
+              if (!isFallback) {
+                  loadImage(buildCorsFallbackUrl(imageUrl), true);
+              } else {
+                  console.error('Failed to convert image to data URL:', e);
+              }
+          }
+      };
 
-  // Set the source of the image to the URL
-  img.src = imageUrl;
+      // If the image fails to load, retry through the CORS proxy once.
+      img.onerror = function() {
+          if (!isFallback) {
+              loadImage(buildCorsFallbackUrl(imageUrl), true);
+          } else {
+              console.error('Failed to load image (direct and proxy):', imageUrl);
+          }
+      };
+
+      // Set the source of the image to the URL
+      img.src = sourceUrl;
+  }
+
+  loadImage(imageUrl, false);
 }
 
 
@@ -167,8 +201,9 @@ async function displayVideoInfo(videoInfo) {
   
   // Example: Assuming you have elements with IDs 'thumbnail', 'title', 'description', etc.
   var thumbImageUrl = videoInfo[0];
-  var thumbImageProxy = 'https://corsproxy.io/?' + thumbImageUrl;
-  convertImageUrlToDataUrl(thumbImageProxy,(dataUrl)=>{
+  // Load the thumbnail directly; YouTube's image CDN sends CORS headers so
+  // no proxy is needed (convertImageUrlToDataUrl falls back to one if it must).
+  convertImageUrlToDataUrl(thumbImageUrl,(dataUrl)=>{
     if (thumbImageUrl.includes("sddefault")) {
       cropImage(dataUrl).then((croppedDataUrl)=>{document.getElementById("thumb").src=croppedDataUrl})
     }  
@@ -186,8 +221,8 @@ async function displayVideoInfo(videoInfo) {
  // document.getElementById("subscribers").innerText = videoInfo[6];
   //document.getElementById("published").innerText = videoInfo[7];
 
-  var channelIconUrlProxy = 'https://corsproxy.io/?'+videoInfo[8];
-  convertImageUrlToDataUrl(channelIconUrlProxy,(dataUrl)=>{document.getElementById("channelIcon").src=dataUrl})
+  // Load the channel icon directly; the yt3 CDN sends CORS headers too.
+  convertImageUrlToDataUrl(videoInfo[8],(dataUrl)=>{document.getElementById("channelIcon").src=dataUrl})
 
   //document.getElementById("channelIcon").src = ( videoInfo[8]);
   console.log("DONE")
