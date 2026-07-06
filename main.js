@@ -289,61 +289,76 @@ function cropImage(dataUrl) {
   return new Promise((resolve, reject) => {
       // Wait for the image to load
       img.onload = function() {
+          var width = img.width;
+          var height = img.height;
+
           // Create a canvas element
           var canvas = document.createElement('canvas');
           var ctx = canvas.getContext('2d');
 
           // Set canvas dimensions to match image
-          canvas.width = img.width;
-          canvas.height = img.height;
+          canvas.width = width;
+          canvas.height = height;
 
           // Draw the image onto the canvas
           ctx.drawImage(img, 0, 0);
 
           // Get image data
-          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          var data = imageData.data;
+          var data = ctx.getImageData(0, 0, width, height).data;
 
-          // Find top border height
-          var topBorderHeight = 0;
-          for (var y = 0; y < canvas.height; y++) {
-              var isBlackLine = true;
-              for (var x = 0; x < canvas.width; x++) {
-                  var pixelIndex = (y * canvas.width + x) * 4; // Pixel index in the data array
-                  // Check if the pixel is not black
-                  if (data[pixelIndex] !== 0 || data[pixelIndex + 1] !== 0 || data[pixelIndex + 2] !== 0 || data[pixelIndex + 3] !== 255) {
-                      isBlackLine = false;
-                      break;
+          // A letterbox bar pixel is "near-black" rather than pure black:
+          // YouTube stores these thumbnails as JPEG, so compression leaves the
+          // black bars slightly noisy. Compare against a threshold (not === 0)
+          // so the bars are actually detected instead of being missed.
+          var BLACK_THRESHOLD = 28;
+          // Allow a few stray non-black pixels per row so compression noise (or
+          // a tiny logo poking into the bar) does not stop the detection.
+          var MAX_NON_BLACK = Math.ceil(width * 0.02);
+
+          function isBlackRow(y) {
+              var nonBlack = 0;
+              var rowStart = y * width * 4;
+              for (var x = 0; x < width; x++) {
+                  var i = rowStart + x * 4;
+                  if (data[i] > BLACK_THRESHOLD || data[i + 1] > BLACK_THRESHOLD || data[i + 2] > BLACK_THRESHOLD) {
+                      nonBlack++;
+                      if (nonBlack > MAX_NON_BLACK) return false;
                   }
               }
-              if (!isBlackLine) break;
-              topBorderHeight++;
+              return true;
           }
 
-          // Find bottom border height
+          // Measure the actual top and bottom black bars.
+          var topBorderHeight = 0;
+          while (topBorderHeight < height && isBlackRow(topBorderHeight)) {
+              topBorderHeight++;
+          }
           var bottomBorderHeight = 0;
-          for (var y = canvas.height - 1; y >= 0; y--) {
-              var isBlackLine = true;
-              for (var x = 0; x < canvas.width; x++) {
-                  var pixelIndex = (y * canvas.width + x) * 4; // Pixel index in the data array
-                  // Check if the pixel is not black
-                  if (data[pixelIndex] !== 0 || data[pixelIndex + 1] !== 0 || data[pixelIndex + 2] !== 0 || data[pixelIndex + 3] !== 255) {
-                      isBlackLine = false;
-                      break;
-                  }
-              }
-              if (!isBlackLine) break;
+          while (bottomBorderHeight < height - topBorderHeight && isBlackRow(height - 1 - bottomBorderHeight)) {
               bottomBorderHeight++;
+          }
+
+          var contentHeight = height - topBorderHeight - bottomBorderHeight;
+
+          // YouTube's 4:3 fallback thumbnails letterbox a 16:9 frame, so the
+          // real content is the centred 16:9 region. If the detected content is
+          // not close to 16:9 (detection missed the bars, or the thumbnail is
+          // almost entirely dark), fall back to that exact geometry so the
+          // result is always an accurate 16:9 image with no black bars.
+          var target16by9 = Math.round(width * 9 / 16);
+          if (contentHeight <= 0 || Math.abs(contentHeight - target16by9) > height * 0.06) {
+              contentHeight = Math.min(height, target16by9);
+              topBorderHeight = Math.round((height - contentHeight) / 2);
           }
 
           // Create a new canvas for the cropped image
           var croppedCanvas = document.createElement('canvas');
           var croppedCtx = croppedCanvas.getContext('2d');
           // Set dimensions for the cropped canvas
-          croppedCanvas.width = canvas.width;
-          croppedCanvas.height = canvas.height - topBorderHeight - bottomBorderHeight;
+          croppedCanvas.width = width;
+          croppedCanvas.height = contentHeight;
           // Draw the cropped image onto the new canvas
-          croppedCtx.drawImage(canvas, 0, topBorderHeight, canvas.width, canvas.height - topBorderHeight - bottomBorderHeight, 0, 0, canvas.width, canvas.height - topBorderHeight - bottomBorderHeight);
+          croppedCtx.drawImage(canvas, 0, topBorderHeight, width, contentHeight, 0, 0, width, contentHeight);
 
           // Convert the canvas back to a data URL
           var croppedDataUrl = croppedCanvas.toDataURL();
