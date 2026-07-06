@@ -92,37 +92,71 @@ async function takeScreenshot() {
 }
 
 
+// Build a CORS-friendly fallback URL using the images.weserv.nl image proxy.
+// This is only used if loading the image directly fails, so the app keeps
+// working even if a host ever stops sending CORS headers.
+function buildCorsFallbackUrl(imageUrl) {
+  // weserv expects the target URL without its protocol prefix.
+  var stripped = imageUrl.replace(/^https?:\/\//, '');
+  return 'https://images.weserv.nl/?url=' + encodeURIComponent(stripped);
+}
+
 function convertImageUrlToDataUrl(imageUrl, callback) {
-  // Create a new Image object
-  var img = new Image();
+  // Try loading the image directly first (YouTube's own CDNs send CORS
+  // headers), and only fall back to a proxy if that attempt fails.
+  function loadImage(sourceUrl, isFallback) {
+      // Create a new Image object
+      var img = new Image();
 
-  // Set the crossOrigin property to 'Anonymous' to avoid CORS issues
-  img.crossOrigin = 'Anonymous';
+      // Set the crossOrigin property to 'Anonymous' to avoid CORS issues
+      img.crossOrigin = 'Anonymous';
 
-  // Set the onload callback function
-  img.onload = function() {
-      // Create a canvas element
-      var canvas = document.createElement('canvas');
+      // Set the onload callback function
+      img.onload = function() {
+          // Create a canvas element
+          var canvas = document.createElement('canvas');
 
-      // Set the canvas dimensions to match the image
-      canvas.width = img.width;
-      canvas.height = img.height;
+          // Set the canvas dimensions to match the image
+          canvas.width = img.width;
+          canvas.height = img.height;
 
-      // Get the drawing context
-      var ctx = canvas.getContext('2d');
+          // Get the drawing context
+          var ctx = canvas.getContext('2d');
 
-      // Draw the image onto the canvas
-      ctx.drawImage(img, 0, 0);
+          // Draw the image onto the canvas
+          ctx.drawImage(img, 0, 0);
 
-      // Get the data URL of the canvas
-      var dataUrl = canvas.toDataURL('image/png'); // Change 'image/png' to match the image format
+          try {
+              // Get the data URL of the canvas
+              var dataUrl = canvas.toDataURL('image/png'); // Change 'image/png' to match the image format
 
-      // Call the callback function with the data URL
-      callback(dataUrl);
-  };
+              // Call the callback function with the data URL
+              callback(dataUrl);
+          } catch (e) {
+              // The canvas got tainted (image loaded without CORS headers).
+              // Retry through the CORS proxy if we have not already.
+              if (!isFallback) {
+                  loadImage(buildCorsFallbackUrl(imageUrl), true);
+              } else {
+                  console.error('Failed to convert image to data URL:', e);
+              }
+          }
+      };
 
-  // Set the source of the image to the URL
-  img.src = imageUrl;
+      // If the image fails to load, retry through the CORS proxy once.
+      img.onerror = function() {
+          if (!isFallback) {
+              loadImage(buildCorsFallbackUrl(imageUrl), true);
+          } else {
+              console.error('Failed to load image (direct and proxy):', imageUrl);
+          }
+      };
+
+      // Set the source of the image to the URL
+      img.src = sourceUrl;
+  }
+
+  loadImage(imageUrl, false);
 }
 
 
@@ -167,8 +201,9 @@ async function displayVideoInfo(videoInfo) {
   
   // Example: Assuming you have elements with IDs 'thumbnail', 'title', 'description', etc.
   var thumbImageUrl = videoInfo[0];
-  var thumbImageProxy = 'https://corsproxy.io/?' + thumbImageUrl;
-  convertImageUrlToDataUrl(thumbImageProxy,(dataUrl)=>{
+  // Load the thumbnail directly; YouTube's image CDN sends CORS headers so
+  // no proxy is needed (convertImageUrlToDataUrl falls back to one if it must).
+  convertImageUrlToDataUrl(thumbImageUrl,(dataUrl)=>{
     if (thumbImageUrl.includes("sddefault")) {
       cropImage(dataUrl).then((croppedDataUrl)=>{document.getElementById("thumb").src=croppedDataUrl})
     }  
@@ -186,8 +221,8 @@ async function displayVideoInfo(videoInfo) {
  // document.getElementById("subscribers").innerText = videoInfo[6];
   //document.getElementById("published").innerText = videoInfo[7];
 
-  var channelIconUrlProxy = 'https://corsproxy.io/?'+videoInfo[8];
-  convertImageUrlToDataUrl(channelIconUrlProxy,(dataUrl)=>{document.getElementById("channelIcon").src=dataUrl})
+  // Load the channel icon directly; the yt3 CDN sends CORS headers too.
+  convertImageUrlToDataUrl(videoInfo[8],(dataUrl)=>{document.getElementById("channelIcon").src=dataUrl})
 
   //document.getElementById("channelIcon").src = ( videoInfo[8]);
   console.log("DONE")
@@ -254,61 +289,76 @@ function cropImage(dataUrl) {
   return new Promise((resolve, reject) => {
       // Wait for the image to load
       img.onload = function() {
+          var width = img.width;
+          var height = img.height;
+
           // Create a canvas element
           var canvas = document.createElement('canvas');
           var ctx = canvas.getContext('2d');
 
           // Set canvas dimensions to match image
-          canvas.width = img.width;
-          canvas.height = img.height;
+          canvas.width = width;
+          canvas.height = height;
 
           // Draw the image onto the canvas
           ctx.drawImage(img, 0, 0);
 
           // Get image data
-          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          var data = imageData.data;
+          var data = ctx.getImageData(0, 0, width, height).data;
 
-          // Find top border height
-          var topBorderHeight = 0;
-          for (var y = 0; y < canvas.height; y++) {
-              var isBlackLine = true;
-              for (var x = 0; x < canvas.width; x++) {
-                  var pixelIndex = (y * canvas.width + x) * 4; // Pixel index in the data array
-                  // Check if the pixel is not black
-                  if (data[pixelIndex] !== 0 || data[pixelIndex + 1] !== 0 || data[pixelIndex + 2] !== 0 || data[pixelIndex + 3] !== 255) {
-                      isBlackLine = false;
-                      break;
+          // A letterbox bar pixel is "near-black" rather than pure black:
+          // YouTube stores these thumbnails as JPEG, so compression leaves the
+          // black bars slightly noisy. Compare against a threshold (not === 0)
+          // so the bars are actually detected instead of being missed.
+          var BLACK_THRESHOLD = 28;
+          // Allow a few stray non-black pixels per row so compression noise (or
+          // a tiny logo poking into the bar) does not stop the detection.
+          var MAX_NON_BLACK = Math.ceil(width * 0.02);
+
+          function isBlackRow(y) {
+              var nonBlack = 0;
+              var rowStart = y * width * 4;
+              for (var x = 0; x < width; x++) {
+                  var i = rowStart + x * 4;
+                  if (data[i] > BLACK_THRESHOLD || data[i + 1] > BLACK_THRESHOLD || data[i + 2] > BLACK_THRESHOLD) {
+                      nonBlack++;
+                      if (nonBlack > MAX_NON_BLACK) return false;
                   }
               }
-              if (!isBlackLine) break;
-              topBorderHeight++;
+              return true;
           }
 
-          // Find bottom border height
+          // Measure the actual top and bottom black bars.
+          var topBorderHeight = 0;
+          while (topBorderHeight < height && isBlackRow(topBorderHeight)) {
+              topBorderHeight++;
+          }
           var bottomBorderHeight = 0;
-          for (var y = canvas.height - 1; y >= 0; y--) {
-              var isBlackLine = true;
-              for (var x = 0; x < canvas.width; x++) {
-                  var pixelIndex = (y * canvas.width + x) * 4; // Pixel index in the data array
-                  // Check if the pixel is not black
-                  if (data[pixelIndex] !== 0 || data[pixelIndex + 1] !== 0 || data[pixelIndex + 2] !== 0 || data[pixelIndex + 3] !== 255) {
-                      isBlackLine = false;
-                      break;
-                  }
-              }
-              if (!isBlackLine) break;
+          while (bottomBorderHeight < height - topBorderHeight && isBlackRow(height - 1 - bottomBorderHeight)) {
               bottomBorderHeight++;
+          }
+
+          var contentHeight = height - topBorderHeight - bottomBorderHeight;
+
+          // YouTube's 4:3 fallback thumbnails letterbox a 16:9 frame, so the
+          // real content is the centred 16:9 region. If the detected content is
+          // not close to 16:9 (detection missed the bars, or the thumbnail is
+          // almost entirely dark), fall back to that exact geometry so the
+          // result is always an accurate 16:9 image with no black bars.
+          var target16by9 = Math.round(width * 9 / 16);
+          if (contentHeight <= 0 || Math.abs(contentHeight - target16by9) > height * 0.06) {
+              contentHeight = Math.min(height, target16by9);
+              topBorderHeight = Math.round((height - contentHeight) / 2);
           }
 
           // Create a new canvas for the cropped image
           var croppedCanvas = document.createElement('canvas');
           var croppedCtx = croppedCanvas.getContext('2d');
           // Set dimensions for the cropped canvas
-          croppedCanvas.width = canvas.width;
-          croppedCanvas.height = canvas.height - topBorderHeight - bottomBorderHeight;
+          croppedCanvas.width = width;
+          croppedCanvas.height = contentHeight;
           // Draw the cropped image onto the new canvas
-          croppedCtx.drawImage(canvas, 0, topBorderHeight, canvas.width, canvas.height - topBorderHeight - bottomBorderHeight, 0, 0, canvas.width, canvas.height - topBorderHeight - bottomBorderHeight);
+          croppedCtx.drawImage(canvas, 0, topBorderHeight, width, contentHeight, 0, 0, width, contentHeight);
 
           // Convert the canvas back to a data URL
           var croppedDataUrl = croppedCanvas.toDataURL();
