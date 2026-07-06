@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="YT Card Maker">
+  <defs>
+    <linearGradient id="badge" x1="40" y1="24" x2="472" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6D5DF6"/>
+      <stop offset="0.55" stop-color="#9A46F0"/>
+      <stop offset="1" stop-color="#C6339E"/>
+    </linearGradient>
+    <linearGradient id="thumb" x1="128" y1="150" x2="384" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8E7BFF"/>
+      <stop offset="1" stop-color="#D06BE6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Badge (bolder, simplified for tiny sizes) -->
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#badge)"/>
+
+  <!-- Card -->
+  <rect x="104" y="120" width="304" height="272" rx="40" fill="#FFFFFF"/>
+
+  <!-- Thumbnail block -->
+  <rect x="132" y="148" width="248" height="150" rx="22" fill="url(#thumb)"/>
+
+  <!-- Sparkle -->
+  <path d="M348 176 c5 17 7 19 24 24 c-17 5 -19 7 -24 24 c-5 -17 -7 -19 -24 -24 c17 -5 19 -7 24 -24 Z" fill="#FFFFFF"/>
+
+  <!-- Avatar dot + title bar -->
+  <circle cx="170" cy="348" r="26" fill="url(#thumb)"/>
+  <rect x="214" y="334" width="164" height="28" rx="14" fill="#2C2350"/>
+</svg>

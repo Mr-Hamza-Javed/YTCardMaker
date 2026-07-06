@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="YT Card Maker logo">
+  <defs>
+    <linearGradient id="badge" x1="40" y1="24" x2="472" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6D5DF6"/>
+      <stop offset="0.55" stop-color="#9A46F0"/>
+      <stop offset="1" stop-color="#C6339E"/>
+    </linearGradient>
+    <linearGradient id="thumb" x1="142" y1="154" x2="370" y2="286" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8E7BFF"/>
+      <stop offset="1" stop-color="#D06BE6"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-15%" y="-12%" width="130%" height="135%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#2A0C46" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+
+  <!-- App badge -->
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#badge)"/>
+
+  <!-- Card -->
+  <g filter="url(#cardShadow)">
+    <rect x="116" y="128" width="280" height="256" rx="36" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Thumbnail block -->
+  <rect x="142" y="154" width="228" height="132" rx="18" fill="url(#thumb)"/>
+
+  <!-- Sparkle (auto-generate) -->
+  <path d="M338 170 c4 14 6 16 20 20 c-14 4 -16 6 -20 20 c-4 -14 -6 -16 -20 -20 c14 -4 16 -6 20 -20 Z" fill="#FFFFFF"/>
+  <circle cx="300" cy="214" r="6" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- Channel avatar dot -->
+  <circle cx="168" cy="340" r="22" fill="url(#thumb)"/>
+
+  <!-- Title bars -->
+  <rect x="206" y="322" width="158" height="18" rx="9" fill="#2C2350"/>
+  <rect x="206" y="352" width="112" height="15" rx="7.5" fill="#B7B0D4"/>
+</svg>
