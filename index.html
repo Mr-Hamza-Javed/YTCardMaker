@@ -1,97 +1,1243 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YT Card Maker</title>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FeedFrame · video card generator</title>
+<meta name="description" content="Paste a YouTube link and get home, search, up next, mobile and Shorts video cards. Download as PNG or copy as an image. Runs entirely in your browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='%2315140F' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M3 9V5a2 2 0 0 1 2-2h4M19 3h4a2 2 0 0 1 2 2v4M25 19v4a2 2 0 0 1-2 2h-4M9 25H5a2 2 0 0 1-2-2v-4'/%3E%3Crect x='8' y='9' width='12' height='10' rx='2' fill='%232747D8' stroke='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#F3F1EC;--surface:#FFFFFF;--field:#FFFFFF;--ink:#15140F;--muted:#66625A;--line:#DDD9CF;--field-line:#CFCABF;
+  --stage:#EAE7E0;--stage-dot:#D3CFC5;--accent:#2747D8;--accent-hover:#1E3BBE;--accent-ink:#FFFFFF;
+  --ok:#1F8A4C;--warn:#B45309;--err:#B42318;
+  --shadow:0 1px 2px rgba(21,20,15,.08),0 8px 24px rgba(21,20,15,.08);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#111110;--surface:#1A1A18;--field:#151513;--ink:#EFEDE6;--muted:#A19D93;--line:#2E2D29;--field-line:#3A3934;
+  --stage:#0A0A09;--stage-dot:#262522;--accent:#7F97FF;--accent-hover:#9DB0FF;--accent-ink:#0B0B0A;
+  --ok:#3DBE72;--warn:#F0A43A;--err:#FF7A6B;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#111110;--surface:#1A1A18;--field:#151513;--ink:#EFEDE6;--muted:#A19D93;--line:#2E2D29;--field-line:#3A3934;
+    --stage:#0A0A09;--stage-dot:#262522;--accent:#7F97FF;--accent-hover:#9DB0FF;--accent-ink:#0B0B0A;
+    --ok:#3DBE72;--warn:#F0A43A;--err:#FF7A6B;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.45 Figtree,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.page{max-width:1440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
 
-    <!-- Favicons / app icons -->
-    <link rel="icon" href="favicon.ico" sizes="any" />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
-    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="manifest" href="site.webmanifest" />
-    <meta name="theme-color" content="#9A46F0" />
+.top{height:52px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-family:"Bricolage Grotesque",Figtree,sans-serif;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.brand .mark{width:22px;height:22px}
+.brand .mark rect{fill:var(--accent)}
+.icon-btn{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--field-line);border-radius:9px;background:transparent;color:var(--ink);cursor:pointer}
+.icon-btn:hover{border-color:var(--ink)}
+.icon-btn svg{width:17px;height:17px}
+.icon-btn .i-sun{display:none}
+:root[data-mode="dark"] .icon-btn .i-sun{display:block}
+:root[data-mode="dark"] .icon-btn .i-moon{display:none}
 
-    <link rel="stylesheet" href="styles.css" />
-    <script src="main.js"></script>
-    <script src="html2canvas.js"></script>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous"
-    />
+.hero{padding:24px 24px 20px}
+.eyebrow{margin:0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;line-height:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1{margin:8px 0 0;font-family:"Bricolage Grotesque",Figtree,sans-serif;font-size:clamp(26px,3.2vw,38px);line-height:1.04;font-weight:800;letter-spacing:-.03em;text-wrap:balance}
+.lede{margin:8px 0 0;max-width:600px;font-size:15px;line-height:22px;color:var(--muted);text-wrap:pretty}
+.linkform{margin-top:16px;display:flex;flex-direction:column;gap:6px;max-width:820px}
+.linkform label{color:var(--ink)}
+.linkrow{display:flex;gap:8px}
+.inputwrap{position:relative;flex:1;min-width:0}
+.inputwrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--muted);pointer-events:none}
+#link{width:100%;height:40px;padding:0 14px 0 36px;border:1.5px solid var(--ink);border-radius:10px;background:var(--field);color:var(--ink);font:500 14px Figtree,sans-serif}
+#link::placeholder{color:var(--muted);opacity:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 10px;border-radius:8px;border:1px solid transparent;font:600 13px Figtree,sans-serif;cursor:pointer;white-space:nowrap;text-decoration:none;transition:background-color .15s,border-color .15s,opacity .15s}
+.btn svg{flex-shrink:0;width:15px;height:15px}
+.btn.primary{height:40px;padding:0 18px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:700}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.primary[disabled]{opacity:.7;cursor:progress}
+.btn.ghost{border-color:var(--field-line);background:var(--surface);color:var(--ink)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn.ink{background:var(--ink);color:var(--paper)}
+.btn.ink:hover{opacity:.86}
+.btn.done{border-color:var(--ok)}
+.status{display:flex;align-items:flex-start;gap:6px;margin:2px 0 0;font-size:13px;line-height:18px;color:var(--muted)}
+.status .dot{width:7px;height:7px;margin-top:5px;border-radius:50%;background:var(--field-line);flex-shrink:0}
+.status[data-kind="busy"] .dot{background:var(--accent);animation:pulse 1s ease-in-out infinite}
+.status[data-kind="ok"] .dot{background:var(--ok)}
+.status[data-kind="warn"] .dot{background:var(--warn)}
+.status[data-kind="error"] .dot{background:var(--err)}
+.status[data-kind="error"],.status[data-kind="warn"]{color:var(--ink)}
+@keyframes pulse{50%{opacity:.3}}
 
-  </head>
-  <body>
-    <div class="container" id="container">
-      <div class="auto-hide-alert alert alert-success"  role="alert">
-        Done
-      </div>
-      
-      <!--input Area-->
-      <div class="input-area mb-3 ">
-        <label class="form-label" for="videoId">Enter YouTube Video URL:</label>
-        <input class="form-control" type="text" id="videoURL" name="videoURL" />
-        <button class="btn btn-primary" onclick="showVideoInfo()" type="button">
-          Get Video Info
-        </button>
-      </div>
+.work{display:grid;grid-template-columns:272px minmax(0,1fr);gap:20px;padding:0 24px 24px;align-items:start}
+.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.panel summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default}
+.panel summary::-webkit-details-marker{display:none}
+.panel h2,.gallery h2{margin:0;font-family:"Bricolage Grotesque",Figtree,sans-serif;font-size:17px;line-height:22px;font-weight:700;letter-spacing:-.01em}
+.panel .chev{display:none;transition:transform .2s}
+.panel[open] .chev{transform:rotate(180deg)}
+.intro{margin:4px 0 0;font-size:12px;line-height:17px;color:var(--muted)}
+.fields{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>label,.field .lbl{font-size:12px;line-height:16px;font-weight:600}
+.field .opt{font-weight:400;color:var(--muted)}
+.field input[type="text"],.field textarea{width:100%;height:32px;padding:0 9px;border:1px solid var(--field-line);border-radius:8px;background:var(--field);color:var(--ink);font:400 13px Figtree,sans-serif}
+.field textarea{height:auto;padding:7px 9px;line-height:18px;resize:vertical;min-height:46px}
+.field input[type="text"]:focus,.field textarea:focus{border-color:var(--ink)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.hint{margin:0;font-size:12px;line-height:16px;color:var(--muted)}
+.media-row{display:flex;align-items:center;gap:10px}
+.media-row canvas{flex-shrink:0;display:block}
+.media-col{display:flex;flex-direction:column;gap:4px;min-width:0}
+.media-btns{display:flex;gap:6px;flex-wrap:wrap}
+.media-meta{font-size:11px;line-height:15px;color:var(--muted)}
 
-      <!--Card Area-->
-      <div id="screenshotDiv" class="video-card ">
-        <div class="thumbDiv">
-          <img
-            id="thumb"
-            class="video-thumbnail"
-            src="video-thumbnail.jpg"
-            alt="Video Thumbnail"
-          />
-          <p id="duration">00:00</p>
+.gallery{min-width:0;display:flex;flex-direction:column;gap:12px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.toolbar-title{display:flex;align-items:baseline;gap:8px}
+.toolbar-title .mono{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.controls{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.seg{display:flex;padding:2px;gap:2px;border:1px solid var(--field-line);border-radius:9px;background:var(--surface)}
+.seg button{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--ink);font:600 13px Figtree,sans-serif;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.scale{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+select{height:34px;padding:0 8px;border:1px solid var(--field-line);border-radius:8px;background:var(--surface);color:var(--ink);font:600 13px Figtree,sans-serif;cursor:pointer}
+.check{display:flex;align-items:center;gap:6px;min-height:34px;font-size:13px;font-weight:600;cursor:pointer}
+.check input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:14px}
+.fig{margin:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+.fig.wide{grid-column:1/-1}
+.fig-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 8px 8px 14px;border-bottom:1px solid var(--line)}
+.fig-name{display:flex;flex-direction:column;min-width:0}
+.fig-name strong{font-size:13px;line-height:18px}
+.fig-dims{font-size:11px;line-height:15px;color:var(--muted)}
+.fig-actions{display:flex;gap:6px}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:14px;background-color:var(--stage);background-image:radial-gradient(var(--stage-dot) 1px,transparent 1px);background-size:14px 14px;min-width:0}
+.stage canvas{display:block;max-width:100%;height:auto;filter:drop-shadow(0 1px 1px rgba(21,20,15,.1)) drop-shadow(0 6px 14px rgba(21,20,15,.09))}
+:root[data-mode="dark"] .stage canvas{filter:drop-shadow(0 1px 1px rgba(0,0,0,.5)) drop-shadow(0 6px 14px rgba(0,0,0,.4))}
+.stage.clear canvas{filter:none}
+
+.foot{margin-top:auto;padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px 20px;font-size:12px;line-height:16px;color:var(--muted)}
+.foot .mono{font-size:11px}
+.toast{position:fixed;left:50%;bottom:18px;z-index:10;transform:translate(-50%,14px);opacity:0;pointer-events:none;max-width:calc(100vw - 32px);padding:9px 14px;border-radius:10px;background:var(--ink);color:var(--paper);font-size:13px;line-height:18px;font-weight:600;box-shadow:var(--shadow);transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1080px){
+  .work{grid-template-columns:minmax(0,1fr);gap:14px}
+  .panel{position:static;max-height:none}
+  .panel summary{cursor:pointer}
+  .panel .chev{display:block}
+}
+@media (max-width:720px){
+  .top{height:48px;padding:0 14px}
+  .hero{padding:18px 14px 16px}
+  .lede{font-size:14px;line-height:20px}
+  .linkform{margin-top:14px}
+  .linkrow{flex-direction:column;gap:8px}
+  #link{height:44px}
+  .btn.primary{height:44px;width:100%}
+  .work{padding:0 14px 20px}
+  .toolbar-title{display:none}
+  .controls{width:100%}
+  .seg{flex:1}
+  .seg button{flex:1}
+  .btn{height:36px}
+  .stage{padding:10px}
+  .fig-head{padding:8px 8px 8px 12px}
+  .foot{padding:14px;flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <a class="brand" href="./">
+    <svg class="mark" width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M3 9V5a2 2 0 0 1 2-2h4"/><path d="M19 3h4a2 2 0 0 1 2 2v4"/><path d="M25 19v4a2 2 0 0 1-2 2h-4"/><path d="M9 25H5a2 2 0 0 1-2-2v-4"/><rect x="8" y="9" width="12" height="10" rx="2" stroke="none"/></svg>
+    FeedFrame
+  </a>
+  <button type="button" class="icon-btn" id="themeBtn" aria-label="Switch to dark theme">
+    <svg class="i-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <svg class="i-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">Video card generator · runs in your browser</p>
+    <h1>Paste a link. Get every feed card.</h1>
+    <p class="lede">Home, search, up next, mobile and Shorts cards, drawn from your video’s real title and thumbnail. Download each one as a PNG or copy it straight to your clipboard.</p>
+    <form class="linkform" id="linkForm" novalidate>
+      <label for="link" class="eyebrow">YouTube video link</label>
+      <div class="linkrow">
+        <div class="inputwrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1-1"/></svg>
+          <input id="link" name="link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…" aria-describedby="status">
         </div>
+        <button type="submit" class="btn primary" id="goBtn">Make cards</button>
+      </div>
+      <p class="status" id="status" data-kind="idle" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span class="msg">Works with watch, youtu.be, Shorts, live and embed links.</span></p>
+    </form>
+  </section>
 
-        <div class="video-details">
-          <div class="channel-info">
-            <img
-              id="channelIcon"
-              class="channel-icon"
-              src="channel-icon.jpg"
-              alt="Channel Icon"
-            />
-
-            <div class="metadata">
-              <h2 id="title" class="video-title">
-                This is the simple title of your youtube video!
-              </h2>
-
-              <span id="channelName" class="channel-name">Hamza Javed</span>
-            </div>
+  <section class="work">
+    <details class="panel" id="panel" open>
+      <summary>
+        <h2>Card details</h2>
+        <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </summary>
+      <p class="intro">Everything below fills in from the link. Change any field and the cards update.</p>
+      <div class="fields">
+        <div class="field">
+          <label for="f-title">Title</label>
+          <textarea id="f-title" rows="2" data-bind="title"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-channel">Channel</label>
+          <input id="f-channel" type="text" data-bind="channel" autocomplete="off">
+        </div>
+        <div class="two">
+          <div class="field">
+            <label for="f-views">Views</label>
+            <input id="f-views" type="text" data-bind="views" placeholder="48K" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="f-subs">Subs</label>
+            <input id="f-subs" type="text" data-bind="subs" placeholder="1.2M" autocomplete="off">
           </div>
         </div>
+        <div class="two">
+          <div class="field">
+            <label for="f-age">Uploaded</label>
+            <input id="f-age" type="text" data-bind="age" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="f-dur">Duration <span class="opt">(optional)</span></label>
+            <input id="f-dur" type="text" data-bind="duration" autocomplete="off">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-desc">Description <span class="opt">(search card)</span></label>
+          <textarea id="f-desc" rows="2" data-bind="desc" placeholder="Optional. Shows under the channel in search results."></textarea>
+        </div>
+        <div class="field">
+          <span class="lbl" id="thumbLbl">Thumbnail</span>
+          <div class="media-row">
+            <canvas id="thumbMini" width="160" height="90" style="width:80px;height:45px;border-radius:5px" aria-hidden="true"></canvas>
+            <div class="media-col">
+              <span class="media-meta mono" id="thumbMeta">No thumbnail yet</span>
+              <div class="media-btns">
+                <button type="button" class="btn ghost" id="thumbPick" aria-describedby="thumbLbl">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+                  <span>Upload</span>
+                </button>
+                <button type="button" class="btn ghost" id="thumbReset" hidden>Use video’s</button>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="thumbFile" accept="image/*" class="sr-only" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="field">
+          <span class="lbl" id="avLbl">Channel avatar</span>
+          <div class="media-row">
+            <canvas id="avMini" width="72" height="72" style="width:36px;height:36px" aria-hidden="true"></canvas>
+            <div class="media-btns">
+              <button type="button" class="btn ghost" id="avPick" aria-describedby="avLbl">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+                <span>Upload</span>
+              </button>
+              <button type="button" class="btn ghost" id="avReset" hidden>Remove</button>
+            </div>
+          </div>
+          <p class="hint" id="avHint">Using a letter avatar until you upload one.</p>
+          <input type="file" id="avFile" accept="image/*" class="sr-only" tabindex="-1" aria-hidden="true">
+        </div>
       </div>
+    </details>
 
-      <!--Export Area-->
-      <div class="export-area ">
-        <button class="btn btn-primary" onclick="capture()" type="button">
-          Capture and Copy
-        </button>
-        <button class="btn btn-primary" onclick="download()" type="button">
-          Download
-        </button>
-
-        <button
-          class="btn btn-light"
-          onclick="takeScreenshot()"
-          type="button"
-        >
-          Append
-        </button>
-       
+    <div class="gallery">
+      <div class="toolbar">
+        <div class="toolbar-title"><h2>Cards</h2><span class="mono">7 layouts</span></div>
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Card theme">
+            <button type="button" data-theme-card="light" aria-pressed="true">Light</button>
+            <button type="button" data-theme-card="dark" aria-pressed="false">Dark</button>
+          </div>
+          <label class="scale" for="scale">Export
+            <select id="scale">
+              <option value="1">1×</option>
+              <option value="2" selected>2×</option>
+              <option value="3">3×</option>
+              <option value="4">4×</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="clear"> Transparent background</label>
+        </div>
       </div>
-
-      <div id="output"></div>
+      <div class="grid" id="grid"></div>
     </div>
-  </body>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Titles and thumbnails load straight from YouTube in your browser. Nothing is uploaded anywhere.</span>
+  <span class="mono">Not affiliated with YouTube</span>
+</footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<noscript><p style="padding:16px 48px">FeedFrame needs JavaScript to draw the cards.</p></noscript>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------ */
+/* Setup                                                               */
+/* ------------------------------------------------------------------ */
+const $ = (s, r = document) => r.querySelector(s);
+const FONT_STACK = '"Figtree", system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Naskh Arabic", "Noto Sans Devanagari", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+const f = (w, s) => `${w} ${s}px ${FONT_STACK}`;
+
+const CARD_THEMES = {
+  light: { bg: '#FFFFFF', title: '#0F0F0F', meta: '#606060', ph: '#E5E5E5', phInk: '#9A9A9A' },
+  dark:  { bg: '#0F0F0F', title: '#F1F1F1', meta: '#AAAAAA', ph: '#272727', phInk: '#717171' },
+};
+
+// Paired so that cards of similar height sit in the same row — less dead space.
+const CARDS = [
+  { key: 'home',    name: 'Home feed',       where: 'Desktop' },
+  { key: 'mobile',  name: 'Mobile home',     where: 'Phone' },
+  { key: 'search',  name: 'Search results',  where: 'Desktop', wide: true },
+  { key: 'upnext',  name: 'Up next',         where: 'Desktop sidebar' },
+  { key: 'compact', name: 'Mobile compact',  where: 'Phone list' },
+  { key: 'shorts',  name: 'Shorts shelf',    where: 'Desktop' },
+  { key: 'shortsm', name: 'Shorts · mobile', where: 'Phone shelf' },
+];
+
+const AV_COLORS = ['#C2410C', '#0F766E', '#7C3AED', '#B91C1C', '#1D4ED8', '#A16207', '#BE185D', '#15803D'];
+
+const state = {
+  id: null,
+  isShort: false,
+  title: 'Your video title shows up here, and long titles get cut off after two lines just like in the feed',
+  channel: 'Your channel',
+  views: '12K views',
+  subs: '240K subs',
+  age: '2 days ago',
+  duration: '10:24',
+  desc: '',
+  thumb: null,        // current 16:9 image (video's or uploaded)
+  thumbV: null,       // portrait image for Shorts, when the video has one
+  videoThumb: null,
+  videoThumbV: null,
+  customThumb: false,
+  avatar: null,         // what the cards draw: uploaded one, else the channel's
+  customAvatar: null,
+  channelAvatar: null,
+  cardTheme: 'light',
+  scale: 2,
+  clear: false,
+};
+
+/* ------------------------------------------------------------------ */
+/* Text helpers                                                        */
+/* ------------------------------------------------------------------ */
+const M = document.createElement('canvas').getContext('2d');
+const segmenter = (typeof Intl !== 'undefined' && Intl.Segmenter) ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+const graphemes = (s) => segmenter ? Array.from(segmenter.segment(s), (x) => x.segment) : Array.from(s);
+const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+const RTL_CHAR = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+const STRONG = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ֐-ࣿऀ-෿฀-๿぀-ヿ一-鿿가-힯יִ-﷿ﹰ-﻿]/;
+function isRTL(s) { const m = String(s || '').match(STRONG); return !!m && RTL_CHAR.test(m[0]); }
+
+function ellipsize(ctx, s, maxW) {
+  s = s.trim();
+  if (ctx.measureText(s).width <= maxW) return s;
+  const g = graphemes(s);
+  let lo = 0, hi = g.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (ctx.measureText(g.slice(0, mid).join('').trimEnd() + '…').width <= maxW) lo = mid; else hi = mid - 1;
+  }
+  return g.slice(0, lo).join('').trimEnd() + '…';
+}
+
+function wrapText(ctx, text, maxW, maxLines) {
+  const s = clean(text);
+  if (!s) return [];
+  const g = graphemes(s);
+  const out = [];
+  let start = 0;
+  while (start < g.length && out.length < maxLines) {
+    let lo = start + 1, hi = g.length, fit = start + 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (ctx.measureText(g.slice(start, mid).join('')).width <= maxW) { fit = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    let end = fit;
+    if (end < g.length) {
+      for (let i = end; i > start; i--) { if (g[i] === ' ') { end = i; break; } }
+    }
+    if (out.length === maxLines - 1 && end < g.length) {
+      out.push(ellipsize(ctx, g.slice(start).join(''), maxW));
+      return out;
+    }
+    out.push(g.slice(start, end).join('').trim());
+    start = end;
+    while (g[start] === ' ') start++;
+  }
+  return out;
+}
+
+function wrapLines(text, size, weight, w, max) { M.font = f(weight, size); return wrapText(M, text, w, max); }
+function oneLine(text, size, weight, w) { return wrapLines(text, size, weight, w, 1); }
+
+const baseCache = new Map();
+function baseline(font, size, lh) {
+  const k = font + '|' + lh;
+  if (baseCache.has(k)) return baseCache.get(k);
+  M.font = font;
+  const m = M.measureText('Hg');
+  const asc = m.fontBoundingBoxAscent || size * 0.95;
+  const desc = m.fontBoundingBoxDescent || size * 0.25;
+  const b = (lh - (asc + desc)) / 2 + asc;
+  baseCache.set(k, b);
+  return b;
+}
+
+function drawText(ctx, lines, x, y, w, size, lh, weight, color, rtl) {
+  if (!lines.length) return;
+  const font = f(weight, size);
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'alphabetic';
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  ctx.textAlign = rtl ? 'right' : 'left';
+  const b = baseline(font, size, lh);
+  lines.forEach((ln, i) => ctx.fillText(ln, rtl ? x + w : x, y + i * lh + b));
+  ctx.direction = 'ltr';
+  ctx.textAlign = 'left';
+}
+
+/* ------------------------------------------------------------------ */
+/* Drawing primitives                                                  */
+/* ------------------------------------------------------------------ */
+// r is one radius or [topLeft, topRight, bottomRight, bottomLeft]
+function rr(ctx, x, y, w, h, r) {
+  const m = Math.min(w, h) / 2;
+  const [a, b, c, d] = (Array.isArray(r) ? r : [r, r, r, r]).map((v) => Math.max(0, Math.min(v, m)));
+  ctx.beginPath();
+  ctx.moveTo(x + a, y);
+  ctx.lineTo(x + w - b, y);
+  ctx.arcTo(x + w, y, x + w, y + b, b);
+  ctx.lineTo(x + w, y + h - c);
+  ctx.arcTo(x + w, y + h, x + w - c, y + h, c);
+  ctx.lineTo(x + d, y + h);
+  ctx.arcTo(x, y + h, x, y + h - d, d);
+  ctx.lineTo(x, y + a);
+  ctx.arcTo(x, y, x + a, y, a);
+  ctx.closePath();
+}
+
+function cover(ctx, img, x, y, w, h) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const s = Math.max(w / iw, h / ih);
+  const dw = iw * s, dh = ih * s;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+function placeholderIcon(ctx, cx, cy, s, color) {
+  const w = s, h = s * 0.78;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1.5, s * 0.07);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  rr(ctx, cx - w / 2, cy - h / 2, w, h, s * 0.12);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx - w * 0.2, cy - h * 0.16, s * 0.08, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2 + s * 0.06, cy + h * 0.32);
+  ctx.lineTo(cx - w * 0.08, cy - h * 0.02);
+  ctx.lineTo(cx + w * 0.14, cy + h * 0.2);
+  ctx.lineTo(cx + w * 0.26, cy + h * 0.08);
+  ctx.lineTo(cx + w / 2 - s * 0.06, cy + h * 0.3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function thumb(ctx, img, x, y, w, h, r, t) {
+  ctx.save();
+  rr(ctx, x, y, w, h, r);
+  ctx.clip();
+  if (img) {
+    cover(ctx, img, x, y, w, h);
+  } else {
+    ctx.fillStyle = t.ph;
+    ctx.fillRect(x, y, w, h);
+    placeholderIcon(ctx, x + w / 2, y + h / 2, Math.min(w, h) * 0.26, t.phInk);
+  }
+  ctx.restore();
+}
+
+function badge(ctx, str, right, bottom) {
+  str = clean(str);
+  if (!str) return;
+  const font = f(600, 12);
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(str).width) + 8, h = 18;
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  rr(ctx, right - w, bottom - h, w, h, 4);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.direction = 'ltr';
+  ctx.fillText(str, right - w + 4, bottom - h + baseline(font, 12, 18));
+}
+
+function hash(s) { let h = 0; for (const c of s) h = (h * 31 + c.codePointAt(0)) >>> 0; return h; }
+
+function avatar(ctx, x, y, size, d) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  if (d.avatar) {
+    ctx.clip();
+    cover(ctx, d.avatar, x, y, size, size);
+  } else {
+    const name = clean(d.channel);
+    ctx.fillStyle = AV_COLORS[hash(name || '?') % AV_COLORS.length];
+    ctx.fill();
+    const ch = (graphemes(name.replace(/^@/, ''))[0] || '?').toLocaleUpperCase();
+    const fs = Math.round(size * 0.44);
+    const font = f(600, fs);
+    ctx.font = font;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.direction = 'ltr';
+    ctx.fillText(ch, x + size / 2, y + baseline(font, fs, size));
+  }
+  ctx.restore();
+}
+
+// The card's own background gets softly rounded corners.
+const CARD_R = 12;
+
+function withUnit(value, has, unit) {
+  const s = clean(value);
+  if (!s || has.test(s)) return s;
+  return s + ' ' + unit;
+}
+const viewsText = (d) => withUnit(d.views, /view|watching/i, 'views');
+const subsText = (d) => withUnit(d.subs, /subs?\b|subscriber/i, 'subs');
+const metaLine = (d) => [viewsText(d), clean(d.age)].filter(Boolean).join(' · ');
+const channelLine = (d) => [clean(d.channel), subsText(d)].filter(Boolean).join(' · ');
+
+/* ------------------------------------------------------------------ */
+/* Card layouts. Each returns { w, h, paint(ctx, theme) } in CSS px.   */
+/* ------------------------------------------------------------------ */
+const BUILD = {
+  home(d) {
+    const P = 16, W = 360, TH = 203, X = P + 48, TW = 312, rowY = P + TH + 12;
+    const tl = wrapLines(d.title, 16, 600, TW, 2);
+    const subs = [channelLine(d), metaLine(d)].filter(Boolean);
+    const subL = subs.map((s) => oneLine(s, 14, 400, TW)[0]);
+    const textH = Math.max(1, tl.length) * 22 + (subL.length ? 4 + subL.length * 20 : 0);
+    return {
+      w: W + P * 2, h: rowY + Math.max(36, textH) + P,
+      paint(ctx, t) {
+        thumb(ctx, d.thumb, P, P, W, TH, 12, t);
+        badge(ctx, d.duration, P + W - 8, P + TH - 8);
+        avatar(ctx, P, rowY, 36, d);
+        drawText(ctx, tl, X, rowY, TW, 16, 22, 600, t.title, isRTL(d.title));
+        let y = rowY + Math.max(1, tl.length) * 22 + 4;
+        subL.forEach((s, i) => { drawText(ctx, [s], X, y, TW, 14, 20, 400, t.meta, isRTL(subs[i])); y += 20; });
+      },
+    };
+  },
+
+  upnext(d) {
+    const P = 12, TW0 = 168, TH = 94, X = P + TW0 + 8, TW = 226;
+    const tl = wrapLines(d.title, 14, 600, TW, 2);
+    const subs = [channelLine(d), metaLine(d)].filter(Boolean);
+    const subL = subs.map((s) => oneLine(s, 12, 400, TW)[0]);
+    const textH = Math.max(1, tl.length) * 20 + (subL.length ? 4 + subL.length * 18 : 0);
+    return {
+      w: 426, h: P + Math.max(TH, textH) + P,
+      paint(ctx, t) {
+        thumb(ctx, d.thumb, P, P, TW0, TH, 8, t);
+        badge(ctx, d.duration, P + TW0 - 4, P + TH - 4);
+        drawText(ctx, tl, X, P, TW, 14, 20, 600, t.title, isRTL(d.title));
+        let y = P + Math.max(1, tl.length) * 20 + 4;
+        subL.forEach((s, i) => { drawText(ctx, [s], X, y, TW, 12, 18, 400, t.meta, isRTL(subs[i])); y += 18; });
+      },
+    };
+  },
+
+  search(d) {
+    const P = 16, TW0 = 360, TH = 203, X = P + TW0 + 16, TW = 460;
+    const tl = wrapLines(d.title, 18, 500, TW, 2);
+    const meta = metaLine(d);
+    const metaL = meta ? oneLine(meta, 12, 400, TW) : [];
+    const ch = channelLine(d);
+    const chL = ch ? oneLine(ch, 12, 400, TW - 32) : [];
+    const desc = clean(d.desc);
+    const dl = desc ? wrapLines(desc, 12, 400, TW, 2) : [];
+    let textH = Math.max(1, tl.length) * 26;
+    if (metaL.length) textH += 4 + 18;
+    if (chL.length) textH += 12 + 24;
+    if (dl.length) textH += 12 + dl.length * 18;
+    return {
+      w: 868, h: P + Math.max(TH, textH) + P,
+      paint(ctx, t) {
+        thumb(ctx, d.thumb, P, P, TW0, TH, 12, t);
+        badge(ctx, d.duration, P + TW0 - 8, P + TH - 8);
+        let y = P;
+        drawText(ctx, tl, X, y, TW, 18, 26, 500, t.title, isRTL(d.title));
+        y += Math.max(1, tl.length) * 26;
+        if (metaL.length) { y += 4; drawText(ctx, metaL, X, y, TW, 12, 18, 400, t.meta, isRTL(meta)); y += 18; }
+        if (chL.length) { y += 12; avatar(ctx, X, y, 24, d); drawText(ctx, chL, X + 32, y + 3, TW - 32, 12, 18, 400, t.meta, isRTL(ch)); y += 24; }
+        if (dl.length) { y += 12; drawText(ctx, dl, X, y, TW, 12, 18, 400, t.meta, isRTL(desc)); }
+      },
+    };
+  },
+
+  mobile(d) {
+    const W = 390, TH = 219, X = 60, TW = 318, rowY = TH + 12;
+    const tl = wrapLines(d.title, 15, 600, TW, 2);
+    const meta = [clean(d.channel), subsText(d), viewsText(d), clean(d.age)].filter(Boolean).join(' · ');
+    const ml = meta ? oneLine(meta, 12, 400, TW) : [];
+    const textH = Math.max(1, tl.length) * 21 + (ml.length ? 4 + 16 : 0);
+    return {
+      w: W, h: rowY + Math.max(36, textH) + 20,
+      paint(ctx, t) {
+        thumb(ctx, d.thumb, 0, 0, W, TH, [CARD_R, CARD_R, 0, 0], t);
+        badge(ctx, d.duration, W - 8, TH - 8);
+        avatar(ctx, 12, rowY, 36, d);
+        drawText(ctx, tl, X, rowY, TW, 15, 21, 600, t.title, isRTL(d.title));
+        if (ml.length) drawText(ctx, ml, X, rowY + Math.max(1, tl.length) * 21 + 4, TW, 12, 16, 400, t.meta, isRTL(meta));
+      },
+    };
+  },
+
+  compact(d) {
+    const P = 12, TW0 = 160, TH = 90, X = P + TW0 + 12, TW = 194;
+    const tl = wrapLines(d.title, 14, 600, TW, 2);
+    const subs = [channelLine(d), metaLine(d)].filter(Boolean);
+    const subL = subs.map((s) => oneLine(s, 12, 400, TW)[0]);
+    const textH = Math.max(1, tl.length) * 20 + (subL.length ? 4 + subL.length * 16 : 0);
+    return {
+      w: 390, h: P + Math.max(TH, textH) + P,
+      paint(ctx, t) {
+        thumb(ctx, d.thumb, P, P, TW0, TH, 8, t);
+        badge(ctx, d.duration, P + TW0 - 4, P + TH - 4);
+        drawText(ctx, tl, X, P, TW, 14, 20, 600, t.title, isRTL(d.title));
+        let y = P + Math.max(1, tl.length) * 20 + 4;
+        subL.forEach((s, i) => { drawText(ctx, [s], X, y, TW, 12, 16, 400, t.meta, isRTL(subs[i])); y += 16; });
+      },
+    };
+  },
+
+  shorts(d) {
+    const P = 16, TW0 = 210, TH = 373, TW = 210, rowY = P + TH + 12;
+    const tl = wrapLines(d.title, 16, 600, TW, 2);
+    const v = viewsText(d);
+    const vl = v ? oneLine(v, 14, 400, TW) : [];
+    const textH = Math.max(1, tl.length) * 22 + (vl.length ? 4 + 20 : 0);
+    return {
+      w: TW0 + P * 2, h: rowY + Math.max(24, textH) + P,
+      paint(ctx, t) {
+        thumb(ctx, d.thumbV || d.thumb, P, P, TW0, TH, 12, t);
+        drawText(ctx, tl, P, rowY, TW, 16, 22, 600, t.title, isRTL(d.title));
+        if (vl.length) drawText(ctx, vl, P, rowY + Math.max(1, tl.length) * 22 + 4, TW, 14, 20, 400, t.meta, isRTL(v));
+      },
+    };
+  },
+
+  shortsm(d) {
+    const P = 12, TW0 = 180, TH = 320, TW = 156, X = P + 12;
+    const tl = wrapLines(d.title, 14, 600, TW, 2);
+    const v = viewsText(d);
+    const vl = v ? oneLine(v, 12, 500, TW) : [];
+    return {
+      w: TW0 + P * 2, h: TH + P * 2,
+      paint(ctx, t) {
+        thumb(ctx, d.thumbV || d.thumb, P, P, TW0, TH, 8, t);
+        ctx.save();
+        rr(ctx, P, P, TW0, TH, 8);
+        ctx.clip();
+        const g = ctx.createLinearGradient(0, P + TH * 0.45, 0, P + TH);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, 'rgba(0,0,0,0.78)');
+        ctx.fillStyle = g;
+        ctx.fillRect(P, P + TH * 0.45, TW0, TH * 0.55);
+        ctx.restore();
+        let bottom = P + TH - 12;
+        if (vl.length) { drawText(ctx, vl, X, bottom - 16, TW, 12, 16, 500, '#FFFFFF', isRTL(v)); bottom -= 16 + 4; }
+        drawText(ctx, tl, X, bottom - tl.length * 20, TW, 14, 20, 600, '#FFFFFF', isRTL(d.title));
+      },
+    };
+  },
+};
+
+function paintCard(canvas, key, scale, clear) {
+  const t = CARD_THEMES[state.cardTheme];
+  const card = BUILD[key](state);
+  canvas.width = Math.round(card.w * scale);
+  canvas.height = Math.round(card.h * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, card.w, card.h);
+  if (!clear) { ctx.fillStyle = t.bg; rr(ctx, 0, 0, card.w, card.h, CARD_R); ctx.fill(); }
+  card.paint(ctx, t);
+  return card;
+}
+
+/* ------------------------------------------------------------------ */
+/* Gallery                                                             */
+/* ------------------------------------------------------------------ */
+const ICON = {
+  copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h1"/></svg>',
+  png: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>',
+  check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+};
+
+const grid = $('#grid');
+const figs = {};
+for (const c of CARDS) {
+  const fig = document.createElement('figure');
+  fig.className = 'fig' + (c.wide ? ' wide' : '');
+  fig.innerHTML =
+    '<figcaption class="fig-head">' +
+      '<div class="fig-name"><strong></strong><span class="fig-dims mono"></span></div>' +
+      '<div class="fig-actions">' +
+        '<button type="button" class="btn ghost" data-act="copy">' + ICON.copy + '<span>Copy</span></button>' +
+        '<button type="button" class="btn ink" data-act="png">' + ICON.png + '<span>PNG</span></button>' +
+      '</div>' +
+    '</figcaption>' +
+    '<div class="stage"><canvas role="img"></canvas></div>';
+  fig.querySelector('strong').textContent = c.name;
+  fig.querySelector('[data-act="copy"]').setAttribute('aria-label', `Copy ${c.name} card as image`);
+  fig.querySelector('[data-act="png"]').setAttribute('aria-label', `Download ${c.name} card as PNG`);
+  fig.dataset.key = c.key;
+  grid.appendChild(fig);
+  figs[c.key] = { fig, canvas: fig.querySelector('canvas'), dims: fig.querySelector('.fig-dims'), stage: fig.querySelector('.stage'), def: c };
+}
+
+let raf = 0;
+function render() {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => {
+    const pr = Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+    for (const c of CARDS) {
+      const F = figs[c.key];
+      const card = paintCard(F.canvas, c.key, pr, state.clear);
+      F.canvas.style.width = card.w + 'px';
+      F.dims.textContent = `${c.where} · ${card.w} × ${card.h}`;
+      F.canvas.setAttribute('aria-label', `${c.name} card preview: ${clean(state.title) || 'untitled'}`);
+      F.stage.classList.toggle('clear', state.clear);
+    }
+    paintMinis();
+  });
+}
+
+function paintMinis() {
+  const tc = $('#thumbMini'), tctx = tc.getContext('2d');
+  tctx.setTransform(2, 0, 0, 2, 0, 0);
+  tctx.clearRect(0, 0, 80, 45);
+  thumb(tctx, state.thumb, 0, 0, 80, 45, 5, CARD_THEMES[state.cardTheme]);
+  const ac = $('#avMini'), actx = ac.getContext('2d');
+  actx.setTransform(2, 0, 0, 2, 0, 0);
+  actx.clearRect(0, 0, 36, 36);
+  avatar(actx, 0, 0, 36, state);
+}
+
+/* ------------------------------------------------------------------ */
+/* Export                                                              */
+/* ------------------------------------------------------------------ */
+function exportBlob(key) {
+  return new Promise((resolve, reject) => {
+    try {
+      const c = document.createElement('canvas');
+      paintCard(c, key, state.scale, state.clear);
+      c.toBlob((b) => (b ? resolve(b) : reject(new Error('empty'))), 'image/png');
+    } catch (e) { reject(e); }
+  });
+}
+
+function fileName(key) {
+  return `feedframe-${key}-${state.id || 'preview'}-${state.cardTheme}${state.clear ? '-transparent' : ''}@${state.scale}x.png`;
+}
+
+async function downloadCard(key) {
+  try {
+    const blob = await exportBlob(key);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName(key);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('PNG saved.');
+  } catch (e) {
+    toast('Couldn’t make the PNG. Try re-uploading the thumbnail.');
+  }
+}
+
+async function copyCard(key, btn) {
+  if (!navigator.clipboard || !window.ClipboardItem) {
+    toast('This browser can’t copy images. Use PNG instead.');
+    return;
+  }
+  try {
+    // Passing the promise keeps Safari's user-gesture window open.
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': exportBlob(key) })]);
+  } catch (e1) {
+    try {
+      const blob = await exportBlob(key);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    } catch (e2) {
+      toast(location.protocol === 'file:' || !window.isSecureContext
+        ? 'Copy needs the site on https:// (or localhost). PNG works everywhere.'
+        : 'Couldn’t copy. Your browser blocked clipboard access. Use PNG instead.');
+      return;
+    }
+  }
+  flash(btn);
+  toast('Copied. Paste it anywhere.');
+}
+
+function flash(btn) {
+  const label = btn.querySelector('span');
+  if (!btn.classList.contains('done')) {
+    btn.querySelector('svg').outerHTML = ICON.check;
+    label.textContent = 'Copied';
+    btn.classList.add('done');
+  }
+  clearTimeout(btn._t);
+  btn._t = setTimeout(() => {
+    btn.querySelector('svg').outerHTML = ICON.copy;
+    label.textContent = 'Copy';
+    btn.classList.remove('done');
+  }, 1600);
+}
+
+grid.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const key = btn.closest('.fig').dataset.key;
+  if (btn.dataset.act === 'png') downloadCard(key);
+  else copyCard(key, btn);
+});
+
+let toastT = 0;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ------------------------------------------------------------------ */
+/* Loading a video                                                     */
+/* ------------------------------------------------------------------ */
+const ID_RE = /^[A-Za-z0-9_-]{11}$/;
+function parseLink(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return null;
+  if (ID_RE.test(s)) return { id: s, short: false };
+  let u;
+  try { u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : 'https://' + s); } catch (e) { return null; }
+  const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, '');
+  let id = null, short = false;
+  if (host === 'youtu.be') {
+    id = u.pathname.split('/')[1];
+  } else if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtube-nocookie.com') {
+    id = u.searchParams.get('v');
+    if (!id) {
+      const m = u.pathname.match(/^\/(shorts|live|embed|v|e)\/([^/?#]+)/);
+      if (m) { id = m[2]; short = m[1] === 'shorts'; }
+    }
+  }
+  return id && ID_RE.test(id) ? { id, short } : null;
+}
+
+async function getJSON(url, ms = 8000) {
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, credentials: 'omit' });
+    if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
+    return await r.json();
+  } finally { clearTimeout(tm); }
+}
+
+/* YouTube Data API v3 ------------------------------------------------ */
+// This key is visible to anyone who opens the page source. In Google Cloud
+// Console, restrict it to your site's domain (HTTP referrers) and to the
+// YouTube Data API v3 only. Each video load costs 2 of the 10,000 daily units.
+const YT_API_KEY = 'AIzaSyAi9TmRbAeBiTxzxtUGoDiyVHOhW63GYNc';
+const YT_API = 'https://www.googleapis.com/youtube/v3/';
+
+// 1,819,309,887 → "1.8B" · 876,300 → "876K" · 1,290 → "1.2K" (truncated, like the feed)
+function fmtCount(value) {
+  const n = Number(value);
+  if (!isFinite(n) || n < 0) return '';
+  if (n < 1000) return String(Math.floor(n));
+  for (const [size, unit] of [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) {
+    if (n >= size) {
+      const x = n / size;
+      const cut = x < 10 ? Math.floor(x * 10) / 10 : Math.floor(x);
+      return (Number.isInteger(cut) ? String(cut) : cut.toFixed(1)) + unit;
+    }
+  }
+  return String(n);
+}
+
+function timeAgo(iso) {
+  const t = Date.parse(iso || '');
+  if (!t) return '';
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  const steps = [[31536000, 'year'], [2592000, 'month'], [604800, 'week'], [86400, 'day'], [3600, 'hour'], [60, 'minute'], [1, 'second']];
+  for (const [sec, name] of steps) {
+    if (s >= sec) { const n = Math.floor(s / sec); return `${n} ${name}${n === 1 ? '' : 's'} ago`; }
+  }
+  return 'just now';
+}
+
+// "PT1H2M5S" → "1:02:05" · "PT3M34S" → "3:34"
+function fmtDuration(iso) {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(iso || '');
+  if (!m) return '';
+  const h = (+m[1] || 0) * 24 + (+m[2] || 0), mi = +m[3] || 0, s = +m[4] || 0;
+  if (!h && !mi && !s) return '';
+  const pad = (x) => String(x).padStart(2, '0');
+  return h ? `${h}:${pad(mi)}:${pad(s)}` : `${mi}:${pad(s)}`;
+}
+
+function shortDesc(text) {
+  const first = String(text || '').split(/\n\s*\n/)[0];
+  const s = clean(first);
+  return s.length > 280 ? s.slice(0, 277).trimEnd() + '…' : s;
+}
+
+async function fetchApi(id) {
+  if (!YT_API_KEY) return null;
+  const v = await getJSON(`${YT_API}videos?part=snippet,statistics,contentDetails,liveStreamingDetails&id=${id}&key=${YT_API_KEY}`);
+  const item = v && v.items && v.items[0];
+  if (!item) return { notFound: true };
+  const sn = item.snippet || {}, st = item.statistics || {}, cd = item.contentDetails || {}, live = item.liveStreamingDetails || {};
+  let ch = null;
+  if (sn.channelId) {
+    try {
+      const c = await getJSON(`${YT_API}channels?part=snippet,statistics&id=${sn.channelId}&key=${YT_API_KEY}`);
+      ch = c && c.items && c.items[0];
+    } catch (e) { /* the video data is still useful without the channel */ }
+  }
+  const isLive = sn.liveBroadcastContent === 'live';
+  const thumbs = (ch && ch.snippet && ch.snippet.thumbnails) || {};
+  const avatarUrl = (thumbs.medium || thumbs.high || thumbs.default || {}).url || null;
+  const chStats = (ch && ch.statistics) || {};
+  return {
+    full: true,
+    title: sn.title || '',
+    channel: sn.channelTitle || '',
+    desc: shortDesc(sn.description),
+    views: isLive && live.concurrentViewers
+      ? fmtCount(live.concurrentViewers) + ' watching'
+      : (st.viewCount != null ? fmtCount(st.viewCount) + ' views' : ''),
+    subs: !chStats.hiddenSubscriberCount && chStats.subscriberCount != null ? fmtCount(chStats.subscriberCount) + ' subs' : '',
+    age: isLive ? '' : timeAgo(sn.publishedAt),
+    duration: isLive ? 'LIVE' : fmtDuration(cd.duration),
+    avatarUrl,
+  };
+}
+
+// Fallback when the API key is refused: oEmbed gives title + channel name only.
+async function fetchMeta(id) {
+  const watch = `https://www.youtube.com/watch?v=${id}`;
+  const sources = [
+    `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(watch)}`,
+    `https://noembed.com/embed?url=${encodeURIComponent(watch)}`,
+  ];
+  for (const src of sources) {
+    try {
+      const j = await getJSON(src);
+      if (j && j.title) return { title: j.title, channel: j.author_name || '' };
+    } catch (e) { /* try the next source */ }
+  }
+  return null;
+}
+
+function loadImg(src, ms = 10000, minWidth = 121) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const tm = setTimeout(() => { img.src = ''; reject(new Error('timeout')); }, ms);
+    img.onload = () => { clearTimeout(tm); img.naturalWidth >= minWidth ? resolve(img) : reject(new Error('placeholder')); };
+    img.onerror = () => { clearTimeout(tm); reject(new Error('error')); };
+    img.src = src;
+  });
+}
+
+async function loadThumb(id) {
+  for (const name of ['maxresdefault', 'hq720', 'sddefault', 'hqdefault', 'mqdefault']) {
+    try { return await loadImg(`https://i.ytimg.com/vi/${id}/${name}.jpg`); } catch (e) { /* next size */ }
+  }
+  return null;
+}
+
+async function loadPortrait(id) {
+  try {
+    const img = await loadImg(`https://i.ytimg.com/vi/${id}/oardefault.jpg`);
+    return img.naturalHeight > img.naturalWidth ? img : null;
+  } catch (e) { return null; }
+}
+
+const statusEl = $('#status');
+function setStatus(kind, msg) {
+  statusEl.dataset.kind = kind;
+  statusEl.querySelector('.msg').textContent = msg;
+}
+
+let loadToken = 0;
+async function loadVideo(raw) {
+  const parsed = parseLink(raw);
+  if (!parsed) {
+    setStatus('error', 'That doesn’t look like a YouTube video link. Try a watch, youtu.be or Shorts link.');
+    $('#link').focus();
+    return;
+  }
+  const token = ++loadToken;
+  const go = $('#goBtn');
+  go.disabled = true;
+  go.textContent = 'Loading…';
+  setStatus('busy', 'Loading video and channel data…');
+
+  const [api, img, imgV] = await Promise.all([
+    fetchApi(parsed.id).catch((e) => ({ error: e })),
+    loadThumb(parsed.id),
+    parsed.short ? loadPortrait(parsed.id) : Promise.resolve(null),
+  ]);
+  let meta = api && api.full ? api : null;
+  if (!meta) meta = await fetchMeta(parsed.id);
+  const chAvatar = meta && meta.avatarUrl ? await loadImg(meta.avatarUrl, 8000, 1).catch(() => null) : null;
+  if (token !== loadToken) return;
+  go.disabled = false;
+  go.textContent = 'Make cards';
+
+  if (!meta && !img) {
+    setStatus('error', 'Couldn’t find that video. Check the link, or fill in Card details and upload a thumbnail.');
+    return;
+  }
+
+  state.id = parsed.id;
+  state.isShort = parsed.short;
+  state.videoThumb = img;
+  state.videoThumbV = imgV;
+  if (!state.customThumb) { state.thumb = img; state.thumbV = imgV; }
+  if (meta) {
+    state.title = meta.title;
+    if (meta.channel) state.channel = meta.channel;
+    if (meta.full) {
+      state.views = meta.views;
+      state.subs = meta.subs;
+      state.age = meta.age;
+      state.duration = meta.duration;
+      state.desc = meta.desc;
+    }
+  }
+  state.channelAvatar = chAvatar;
+  refreshAvatar();
+  syncFields();
+  updateMediaUI();
+  render();
+
+  const from = meta && meta.channel ? ' from ' + meta.channel : '';
+  if (meta && meta.full) {
+    setStatus('ok', `Loaded “${meta.title}”${from}. Everything is filled in; edit any field to change the cards.`);
+  } else if (meta) {
+    const why = api && api.error && (api.error.status === 400 || api.error.status === 403)
+      ? 'the YouTube API refused the key (check its restrictions or daily quota)'
+      : 'the YouTube API didn’t answer';
+    setStatus('warn', `Loaded “${meta.title}”${from}, but ${why}, so views, subs, date and length need typing.`);
+  } else {
+    setStatus('warn', 'Thumbnail loaded, but the title isn’t public (private video or embedding turned off). Type it in Card details.');
+  }
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('v', parsed.id);
+    history.replaceState(null, '', u);
+  } catch (e) { /* file:// or sandboxed */ }
+}
+
+$('#linkForm').addEventListener('submit', (e) => { e.preventDefault(); loadVideo($('#link').value); });
+$('#link').addEventListener('paste', () => setTimeout(() => { if (parseLink($('#link').value)) loadVideo($('#link').value); }, 0));
+
+/* ------------------------------------------------------------------ */
+/* Card details panel                                                  */
+/* ------------------------------------------------------------------ */
+const bound = Array.from(document.querySelectorAll('[data-bind]'));
+function syncFields() { for (const el of bound) el.value = state[el.dataset.bind] || ''; }
+for (const el of bound) {
+  el.addEventListener('input', () => { state[el.dataset.bind] = el.value; render(); });
+}
+
+function updateMediaUI() {
+  const meta = $('#thumbMeta');
+  if (state.customThumb && state.thumb) meta.textContent = `${state.thumb.naturalWidth} × ${state.thumb.naturalHeight} · uploaded`;
+  else if (state.thumb) meta.textContent = `${state.thumb.naturalWidth} × ${state.thumb.naturalHeight} · from link`;
+  else meta.textContent = 'No thumbnail yet';
+  $('#thumbReset').hidden = !(state.customThumb && state.videoThumb);
+  $('#avReset').hidden = !state.customAvatar;
+  $('#avHint').textContent = state.customAvatar
+    ? 'Uploaded avatar in use.'
+    : state.channelAvatar ? 'Channel avatar, loaded from YouTube.' : 'Letter avatar until the channel’s loads or you upload one.';
+}
+
+// An uploaded avatar wins over the channel's own.
+function refreshAvatar() { state.avatar = state.customAvatar || state.channelAvatar || null; }
+
+function fileToImg(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src = url;
+  });
+}
+
+$('#thumbPick').addEventListener('click', () => $('#thumbFile').click());
+$('#thumbFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const img = await fileToImg(file);
+    state.thumb = img;
+    state.thumbV = null;
+    state.customThumb = true;
+    updateMediaUI();
+    render();
+    toast('Thumbnail replaced.');
+  } catch (err) { toast('That file isn’t an image the browser can read.'); }
+});
+$('#thumbReset').addEventListener('click', () => {
+  state.thumb = state.videoThumb;
+  state.thumbV = state.videoThumbV;
+  state.customThumb = false;
+  updateMediaUI();
+  render();
+});
+
+$('#avPick').addEventListener('click', () => $('#avFile').click());
+$('#avFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    state.customAvatar = await fileToImg(file);
+    refreshAvatar();
+    updateMediaUI();
+    render();
+  } catch (err) { toast('That file isn’t an image the browser can read.'); }
+});
+$('#avReset').addEventListener('click', () => { state.customAvatar = null; refreshAvatar(); updateMediaUI(); render(); });
+
+// Details panel: always open on wide screens, collapsible on narrow ones.
+const wide = window.matchMedia('(min-width: 1081px)');
+const panel = $('#panel');
+panel.querySelector('summary').addEventListener('click', (e) => { if (wide.matches) e.preventDefault(); });
+if (!wide.matches) panel.removeAttribute('open');
+wide.addEventListener && wide.addEventListener('change', () => { if (wide.matches) panel.setAttribute('open', ''); });
+
+/* ------------------------------------------------------------------ */
+/* Toolbar + site theme                                                */
+/* ------------------------------------------------------------------ */
+const segBtns = Array.from(document.querySelectorAll('[data-theme-card]'));
+function setCardTheme(name) {
+  state.cardTheme = name;
+  segBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeCard === name)));
+  render();
+}
+segBtns.forEach((b) => b.addEventListener('click', () => setCardTheme(b.dataset.themeCard)));
+$('#scale').addEventListener('change', (e) => { state.scale = Number(e.target.value) || 2; });
+$('#clear').addEventListener('change', (e) => { state.clear = e.target.checked; render(); });
+
+const root = document.documentElement;
+const darkMQ = window.matchMedia('(prefers-color-scheme: dark)');
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage off */ } }
+function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function siteMode() { return root.dataset.theme || (darkMQ.matches ? 'dark' : 'light'); }
+function syncThemeBtn() {
+  const mode = siteMode();
+  root.dataset.mode = mode;
+  $('#themeBtn').setAttribute('aria-label', mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+}
+const savedTheme = read('ff-theme');
+if (savedTheme === 'light' || savedTheme === 'dark') root.dataset.theme = savedTheme;
+syncThemeBtn();
+darkMQ.addEventListener && darkMQ.addEventListener('change', syncThemeBtn);
+$('#themeBtn').addEventListener('click', () => {
+  const next = siteMode() === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = next;
+  store('ff-theme', next);
+  syncThemeBtn();
+});
+
+/* ------------------------------------------------------------------ */
+/* Start                                                               */
+/* ------------------------------------------------------------------ */
+syncFields();
+updateMediaUI();
+setCardTheme(siteMode());
+
+const fontsReady = document.fonts
+  ? Promise.race([
+      Promise.all([f(400, 14), f(500, 18), f(600, 16)].map((x) => document.fonts.load(x))),
+      new Promise((r) => setTimeout(r, 3000)),
+    ])
+  : Promise.resolve();
+fontsReady.then(() => { baseCache.clear(); render(); });
+if (document.fonts) document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => { baseCache.clear(); render(); });
+
+const params = new URLSearchParams(location.search);
+const pre = params.get('url') || params.get('v');
+if (pre) {
+  $('#link').value = ID_RE.test(pre) ? `https://www.youtube.com/watch?v=${pre}` : pre;
+  loadVideo($('#link').value);
+}
+})();
+</script>
+</body>
 </html>
